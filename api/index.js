@@ -20,7 +20,10 @@ app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
 
 mongoose.set('strictQuery', true);
-mongoose.connect('mongodb+srv://emmakatwebaze2:mTDpCpi9Qf6KzOEL@cluster0.zxbzy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0');
+
+const connectToDatabase = () => {
+  return mongoose.connect('mongodb+srv://emmakatwebaze2:mTDpCpi9Qf6KzOEL@cluster0.zxbzy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0');
+};
 
 app.post('/register', async (req,res) => {
   const {username,password} = req.body;
@@ -109,36 +112,42 @@ app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
 
 });
 
-app.put('/post',uploadMiddleware.single('file'), async (req,res) => {
+app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
   let newPath = null;
   if (req.file) {
-    const {originalname,path} = req.file;
-    const parts = originalname.split('.');
-    const ext = parts[parts.length - 1];
-    newPath = path+'.'+ext;
-    fs.renameSync(path, newPath);
+      const { originalname, path } = req.file;
+      const parts = originalname.split('.');
+      const ext = parts[parts.length - 1];
+      newPath = path + '.' + ext;
+      fs.renameSync(path, newPath);
   }
 
-  const {token} = req.cookies;
-  jwt.verify(token, secret, {}, async (err,info) => {
-    if (err) throw err;
-    const {id,title,summary,content} = req.body;
-    const postDoc = await Post.findById(id);
-    const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
-    if (!isAuthor) {
-      return res.status(400).json('you are not the author');
-    }
-    await postDoc.update({
-      title,
-      summary,
-      content,
-      cover: newPath ? newPath : postDoc.cover,
-    });
+  const { token } = req.cookies;
+  jwt.verify(token, secret, {}, async (err, info) => {
+      if (err) throw err;
+      const { id, title, summary, content } = req.body;
+      const postDoc = await Post.findById(id);
+      const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
+      if (!isAuthor) {
+          return res.status(400).json('you are not the author');
+      }
 
-    res.json(postDoc);
+      // Update fields
+      postDoc.title = title;
+      postDoc.summary = summary;
+      postDoc.content = content;
+      if (newPath) {
+          postDoc.cover = newPath; // Update cover only if there's a new file
+      }
+
+      // Save updated post
+      await postDoc.save();
+
+      // Return the updated post
+      res.json(postDoc);
   });
-
 });
+
 
 app.get('/post', async (req,res) => {
   res.json(
@@ -157,7 +166,20 @@ app.get('/post/:id', async (req, res) => {
 
 const PORT = 4000;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-//
+// app.listen(PORT, () => {
+//   console.log(`Server is running on port ${PORT}`);
+// });
+
+if (require.main === module) {
+  connectToDatabase()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+      });
+    })
+    .catch(err => {
+      console.error('Failed to connect to MongoDB', err);
+    });
+}
+
+module.exports = { app, connectToDatabase };
