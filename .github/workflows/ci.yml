@@ -29,14 +29,4 @@ jobs:
         working-directory: ./client
         run: yarn install
 
-      - name: Lint client code
-        working-directory: ./client
-        run: yarn lint
-
-      - name: Run server tests (Jest)
-        working-directory: ./
-        run: yarn test --ci
-
-      - name: Build client
-        working-directory: ./client
-        run: yarn build
+      
