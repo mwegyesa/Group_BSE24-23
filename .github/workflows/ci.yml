@@ -36,5 +36,3 @@ jobs:
       - name: Install client dependencies
         working-directory: ./client
         run: yarn install
-
-      
