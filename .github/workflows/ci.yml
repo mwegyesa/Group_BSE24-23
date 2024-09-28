@@ -25,6 +25,14 @@ jobs:
         working-directory: ./
         run: yarn install
 
+      - name: Lint client code
+        working-directory: ./client
+        run: yarn lint
+
+      - name: Run server tests (Jest)
+        working-directory: ./
+        run: yarn test --ci
+
       - name: Install client dependencies
         working-directory: ./client
         run: yarn install
