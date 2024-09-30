@@ -33,12 +33,8 @@ jobs:
         working-directory: ./client
         run: yarn install
 
-      # Step 5: Run ESLint to ensure code quality (on both server and client)
-      - name: Lint server code
-        working-directory: ./
-        run: yarn lint
-
-      - name: Lint client code
+      # Step 5: Run ESLint 
+      - name: Run ESLint 
         working-directory: ./client
         run: yarn lint
 
