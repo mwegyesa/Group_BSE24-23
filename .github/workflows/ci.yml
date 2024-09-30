@@ -34,10 +34,9 @@ jobs:
         run: yarn install
 
       # Step 5: Run ESLint to ensure code quality
-
-      # - name: Lint client code
-      #   working-directory: ./client
-      #   run: yarn lint
+      - name: Lint client code
+        working-directory: ./client
+        run: yarn lint
 
       # Step 7: Run Jest tests 
       - name: Run server tests (Jest)
