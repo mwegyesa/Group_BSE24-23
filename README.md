@@ -1,6 +1,6 @@
 Folder Structure
-•	api – contains backend code written in ExpressJs
-•	client – contains frontend code written in ReactJs
+•	api – contains backend code written in ExpressJs.
+•	client – contains frontend code written in ReactJs.
 
 Project Setup
 •	In the root directory in the command line, run yarn install to install the necessary backend dependencies.
