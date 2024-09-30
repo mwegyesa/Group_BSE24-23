@@ -13,37 +13,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
 
-      # Step 3: Install server dependencies
       - name: Install server dependencies
         working-directory: ./
         run: yarn install
 
-      # Step 4: Install client dependencies
       - name: Install client dependencies
         working-directory: ./client
         run: yarn install
 
-      # Step 5: Run ESLint to ensure code quality
       - name: Lint client code
         working-directory: ./client
         run: yarn lint
 
-      # Step 7: Run Jest tests 
       - name: Run server tests (Jest)
         working-directory: ./
         run: yarn test --ci
 
-      # Step 8: Run client build
       - name: Build client
         working-directory: ./client
         run: yarn build
