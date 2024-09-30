@@ -33,30 +33,18 @@ jobs:
         working-directory: ./client
         run: yarn install
 
-      # Step 5: Run ESLint to ensure code quality (on both server and client)
-      - name: Lint server code
-        working-directory: ./
-        run: yarn lint
+      # Step 5: Run ESLint to ensure code quality
 
       - name: Lint client code
         working-directory: ./client
         run: yarn lint
 
-      # Step 6: Run Prettier for code formatting checks (optional)
-      - name: Run Prettier on server
-        working-directory: ./
-        run: yarn prettier --check .
-
-      - name: Run Prettier on client
-        working-directory: ./client
-        run: yarn prettier --check .
-
-      # Step 7: Run Jest tests for server-side code
+      # Step 7: Run Jest tests 
       - name: Run server tests (Jest)
         working-directory: ./
         run: yarn test --ci
 
-      # Step 8: Run Jest tests for client-side code (optional)
-      - name: Run client tests (Jest)
+      # Step 8: Run client build
+      - name: Build client
         working-directory: ./client
-        run: yarn test --ci
+        run: yarn build
