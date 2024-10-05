@@ -3,6 +3,8 @@ import {useState} from "react";
 import {Navigate} from "react-router-dom";
 import Editor from "../Editor";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000'
+
 export default function CreatePost() {
   const [title,setTitle] = useState('');
   const [summary,setSummary] = useState('');
@@ -16,7 +18,7 @@ export default function CreatePost() {
     data.set('content', content);
     data.set('file', files[0]);
     ev.preventDefault();
-    const response = await fetch('http://localhost:4000/post', {
+    const response = await fetch(`${API_URL}/post`, {
       method: 'POST',
       body: data,
       credentials: 'include',
