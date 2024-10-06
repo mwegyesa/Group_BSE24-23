@@ -1,49 +1,76 @@
-name: CI Pipeline
-
+name: CI/CD Pipeline
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
-
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v3
-
-      # Step 2: Set up Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
-
-      # Step 3: Install server dependencies
       - name: Install server dependencies
-        working-directory: ./
         run: yarn install
-
-      # Step 4: Install client dependencies
       - name: Install client dependencies
         working-directory: ./client
         run: yarn install
-
-      # Step 5: Run ESLint 
-      - name: Run ESLint 
+      - name: Lint client code
         working-directory: ./client
         run: yarn lint
-
-      # Step 6: Run Jest tests 
       - name: Run server tests (Jest)
-        working-directory: ./
         run: yarn test --ci
-
-      # Step 8: Build client
       - name: Build client
         working-directory: ./client
-        run: yarn build
+        run: |
+          echo "REACT_APP_API_URL=http://${{ secrets.EC2_HOST }}:4000" > .env
+          yarn build
+  deploy-and-run:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Deploy to EC2 and Start Application
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
+            set -e
+            echo "Deploying to EC2..."
+            if [ ! -d ~/capstone/staging ]; then
+              echo "Creating staging directory..."
+              mkdir -p ~/capstone/staging
+            fi
+            cd ~/capstone/staging
+            if [ ! -d .git ]; then
+              echo "Initializing git repository..."
+              git init
+              git remote add origin '"${REPO_URL}"'
+            fi
+            git fetch origin main
+            git checkout -f main
+            git reset --hard origin/main
+            echo "Creating .env file"
+            cd client
+            echo "REACT_APP_API_URL=http://${{ secrets.EC2_HOST }}:4000" > .env
+            echo "Building entire application"
+            cd ../
+            yarn build
+            echo "PORT=4000" >> .env
+            cd api
+            echo "Starting application...."
+            pm2 stop all || true
+            pm2 start index.js
+            echo "Deployment completed successfully!"
+
+          '
