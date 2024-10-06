@@ -10,11 +10,13 @@ const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const uploadMiddleware = multer({ dest: 'uploads/' });
 const fs = require('fs');
+const path = require('path');
+
 
 const salt = bcrypt.genSaltSync(10);
 const secret = 'asdfe45we45w345wegw345werjktjwertkj';
 
-const API_URL = process.env.FRONTEND_URL || 'http://54.156.57.69:3000'
+const API_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
 
 app.use(cors({
   credentials: true,
@@ -24,6 +26,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
+app.use(express.static(path.join(__dirname, '../client/build')));
 
 mongoose.set('strictQuery', true);
 
@@ -171,7 +174,11 @@ app.get('/post/:id', async (req, res) => {
   res.json(postDoc);
 })
 
-const PORT = 4000;
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build/index.html'));
+});
+
+const PORT = process.env.PORT || 4000;
 
 // app.listen(PORT, () => {
 //   console.log(`Server is running on port ${PORT}`);
