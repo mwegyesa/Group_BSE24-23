@@ -9,4 +9,6 @@ Project Setup
 Running the web application
 •	In the root directory in the command line, run node index.js to start the backend server.
 •	In the /client/ directory in the command line, run yarn start to start the ReactJs server.
+• Testing CI/CD pipeline
+
  
