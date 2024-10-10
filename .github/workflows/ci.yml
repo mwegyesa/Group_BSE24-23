@@ -1,9 +1,15 @@
 name: CI/CD Pipeline
+
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - staging
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - staging
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,24 +35,25 @@ jobs:
         run: |
           echo "REACT_APP_API_URL=http://${{ secrets.EC2_HOST }}:4000" > .env
           yarn build
-  deploy-and-run:
+
+  deploy-staging:
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Deploy to EC2 and Start Application
+      - name: Deploy to Staging EC2 and Start Application
         env:
-          PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
-          HOST: ${{ secrets.EC2_HOST }}
-          USER: ${{ secrets.EC2_USER }}
+          PRIVATE_KEY: ${{ secrets.STAGING_EC2_PRIVATE_KEY }}
+          HOST: ${{ secrets.STAGING_EC2_HOST }}
+          USER: ${{ secrets.STAGING_EC2_USER }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
             set -e
-            echo "Deploying to EC2..."
+            echo "Deploying to Staging EC2..."
             if [ ! -d ~/capstone/staging ]; then
               echo "Creating staging directory..."
               mkdir -p ~/capstone/staging
@@ -57,12 +64,12 @@ jobs:
               git init
               git remote add origin '"${REPO_URL}"'
             fi
-            git fetch origin main
-            git checkout -f main
-            git reset --hard origin/main
+            git fetch origin staging
+            git checkout -f staging
+            git reset --hard origin/staging
             echo "Creating .env file"
             cd client
-            echo "REACT_APP_API_URL=http://${{ secrets.EC2_HOST }}:4000" > .env
+            echo "REACT_APP_API_URL=http://${{ secrets.STAGING_EC2_HOST }}:4000" > .env
             echo "Building entire application"
             cd ../
             yarn build
@@ -71,6 +78,76 @@ jobs:
             echo "Starting application...."
             pm2 stop all || true
             pm2 start index.js
-            echo "Deployment completed successfully!"
+            echo "Staging deployment completed successfully!"
+          '
 
+  deploy-production:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Deploy to Production EC2 and Start Application
+        env:
+          PRIVATE_KEY: ${{ secrets.PROD_EC2_PRIVATE_KEY }}
+          HOST: ${{ secrets.PROD_EC2_HOST }}
+          USER: ${{ secrets.PROD_EC2_USER }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
+            set -e
+            echo "Deploying to Production EC2..."
+            if [ ! -d ~/capstone/production ]; then
+              echo "Creating production directory..."
+              mkdir -p ~/capstone/production
+            fi
+            cd ~/capstone/production
+            if [ ! -d .git ]; then
+              echo "Initializing git repository..."
+              git init
+              git remote add origin '"${REPO_URL}"'
+            fi
+            git fetch origin main
+            git checkout -f main
+            git reset --hard origin/main
+            echo "Creating .env file"
+            cd client
+            echo "REACT_APP_API_URL=http://${{ secrets.PROD_EC2_HOST }}:4000" > .env
+            echo "Building entire application"
+            cd ../
+            yarn build
+            echo "PORT=4000" >> .env
+            cd api
+            echo "Starting application...."
+            pm2 stop all || true
+            pm2 start index.js
+            echo "Production deployment completed successfully!"
+          '
+
+  rollback:
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Rollback to previous version
+        env:
+          PRIVATE_KEY: ${{ secrets.PROD_EC2_PRIVATE_KEY }}
+          HOST: ${{ secrets.PROD_EC2_HOST }}
+          USER: ${{ secrets.PROD_EC2_USER }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
+            set -e
+            echo "Rolling back to previous version..."
+            cd ~/capstone/production
+            git checkout HEAD~1
+            yarn install
+            cd client
+            yarn build
+            cd ../api
+            pm2 restart all
+            echo "Rollback completed successfully!"
           '
