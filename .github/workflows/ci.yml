@@ -24,9 +24,12 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           cd client && yarn install --frozen-lockfile
-      - name: Lint and test
+      - name: Run Lint and test
+        working-directory: ./client
         run: |
           yarn lint
+      - name: Run tests
+        run: |
           yarn test --ci
       - name: Build client
         working-directory: ./client
