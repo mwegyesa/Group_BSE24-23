@@ -18,7 +18,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-const uploadMiddleware = multer({ dest: 'uploads/' });
+const uploadMiddleware = multer({ dest: uploadsDir });
 
 const salt = bcrypt.genSaltSync(10);
 const secret = 'asdfe45we45w345wegw345werjktjwertkj';
