@@ -31,10 +31,17 @@ jobs:
       - name: Run tests
         run: |
           yarn test --ci
-      - name: Build client
+      - name: Build client for staging
+        if: github.ref == 'refs/heads/staging'
         working-directory: ./client
         run: |
-          echo "REACT_APP_API_URL=http://${{ secrets.EC2_HOST }}:4000" > .env
+          echo "REACT_APP_API_URL=http://${{ secrets.STAGING_EC2_HOST }}:4000" > .env
+          yarn build      
+      - name: Build client for production
+        if: github.ref == 'refs/heads/main'
+        working-directory: ./client
+        run: |
+          echo "REACT_APP_API_URL=http://${{ secrets.PROD_EC2_HOST }}:4000" > .env
           yarn build
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
