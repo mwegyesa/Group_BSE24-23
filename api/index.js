@@ -105,62 +105,72 @@ app.post('/logout', (req,res) => {
   res.cookie('token', '').json('ok');
 });
 
-app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
-  const {originalname,path} = req.file;
+app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const { originalname, path: tempPath } = req.file;
   const parts = originalname.split('.');
   const ext = parts[parts.length - 1];
-  const newPath = path+'.'+ext;
-  fs.renameSync(path, newPath);
+  const newPath = path.join(uploadsDir, `${Date.now()}.${ext}`);
 
-  const {token} = req.cookies;
-  jwt.verify(token, secret, {}, async (err,info) => {
-    if (err) throw err;
-    const {title,summary,content} = req.body;
-    const postDoc = await Post.create({
-      title,
-      summary,
-      content,
-      cover:newPath,
-      author:info.id,
+  try {
+    await fs.promises.rename(tempPath, newPath);
+
+    const { token } = req.cookies;
+    jwt.verify(token, secret, {}, async (err, info) => {
+      if (err) throw err;
+      const { title, summary, content } = req.body;
+      const postDoc = await Post.create({
+        title,
+        summary,
+        content,
+        cover: path.relative(uploadsDir, newPath),
+        author: info.id,
+      });
+      res.json(postDoc);
     });
-    res.json(postDoc);
-  });
-
+  } catch (error) {
+    console.error('Error processing file:', error);
+    res.status(500).json({ error: 'Error processing file' });
+  }
 });
 
 app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
   let newPath = null;
   if (req.file) {
-      const { originalname, path } = req.file;
-      const parts = originalname.split('.');
-      const ext = parts[parts.length - 1];
-      newPath = path + '.' + ext;
-      fs.renameSync(path, newPath);
+    const { originalname, path: tempPath } = req.file;
+    const parts = originalname.split('.');
+    const ext = parts[parts.length - 1];
+    newPath = path.join(uploadsDir, `${Date.now()}.${ext}`);
+    await fs.promises.rename(tempPath, newPath);
+    newPath = path.relative(uploadsDir, newPath);
   }
 
   const { token } = req.cookies;
   jwt.verify(token, secret, {}, async (err, info) => {
-      if (err) throw err;
-      const { id, title, summary, content } = req.body;
-      const postDoc = await Post.findById(id);
-      const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
-      if (!isAuthor) {
-          return res.status(400).json('you are not the author');
-      }
+    if (err) throw err;
+    const { id, title, summary, content } = req.body;
+    const postDoc = await Post.findById(id);
+    const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
+    if (!isAuthor) {
+      return res.status(400).json('you are not the author');
+    }
 
-      // Update fields
-      postDoc.title = title;
-      postDoc.summary = summary;
-      postDoc.content = content;
-      if (newPath) {
-          postDoc.cover = newPath; // Update cover only if there's a new file
-      }
+    // Update fields
+    postDoc.title = title;
+    postDoc.summary = summary;
+    postDoc.content = content;
+    if (newPath) {
+      postDoc.cover = newPath;
+    }
 
-      // Save updated post
-      await postDoc.save();
+    // Save updated post
+    await postDoc.save();
 
-      // Return the updated post
-      res.json(postDoc);
+    // Return the updated post
+    res.json(postDoc);
   });
 });
 
