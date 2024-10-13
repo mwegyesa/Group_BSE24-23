@@ -8,10 +8,27 @@ const app = express();
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const multer = require('multer');
-const uploadMiddleware = multer({ dest: 'uploads/' });
+
 const fs = require('fs');
 const path = require('path');
 
+const uploadsDir = path.join(__dirname, 'uploads');
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir)
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+  }
+})
+
+const uploadMiddleware = multer({ storage: storage });
 
 const salt = bcrypt.genSaltSync(10);
 const secret = 'asdfe45we45w345wegw345werjktjwertkj';
@@ -25,7 +42,7 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
-app.use('/uploads', express.static(__dirname + '/uploads'));
+app.use('/uploads', express.static(uploadsDir));
 app.use(express.static(path.join(__dirname, '../client/build')));
 
 mongoose.set('strictQuery', true);
@@ -98,12 +115,10 @@ app.post('/logout', (req,res) => {
   res.cookie('token', '').json('ok');
 });
 
-app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
-  const {originalname,path} = req.file;
-  const parts = originalname.split('.');
-  const ext = parts[parts.length - 1];
-  const newPath = path+'.'+ext;
-  fs.renameSync(path, newPath);
+app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
 
   const {token} = req.cookies;
   jwt.verify(token, secret, {}, async (err,info) => {
@@ -113,22 +128,17 @@ app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
       title,
       summary,
       content,
-      cover:newPath,
+      cover: path.relative(__dirname, req.file.path),
       author:info.id,
     });
     res.json(postDoc);
   });
-
 });
 
 app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
   let newPath = null;
   if (req.file) {
-      const { originalname, path } = req.file;
-      const parts = originalname.split('.');
-      const ext = parts[parts.length - 1];
-      newPath = path + '.' + ext;
-      fs.renameSync(path, newPath);
+    newPath = path.relative(__dirname, req.file.path);
   }
 
   const { token } = req.cookies;
@@ -156,7 +166,6 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
       res.json(postDoc);
   });
 });
-
 
 app.get('/post', async (req,res) => {
   res.json(
