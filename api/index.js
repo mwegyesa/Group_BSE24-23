@@ -18,7 +18,17 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-const uploadMiddleware = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir)
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+  }
+})
+
+const uploadMiddleware = multer({ storage: storage });
 
 const salt = bcrypt.genSaltSync(10);
 const secret = 'asdfe45we45w345wegw345werjktjwertkj';
@@ -110,12 +120,6 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
-  const {originalname,path} = req.file;
-  const parts = originalname.split('.');
-  const ext = parts[parts.length - 1];
-  const newPath = path+'.'+ext;
-  fs.renameSync(path, newPath);
-
   const {token} = req.cookies;
   jwt.verify(token, secret, {}, async (err,info) => {
     if (err) throw err;
@@ -124,22 +128,17 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
       title,
       summary,
       content,
-      cover:newPath,
+      cover: path.relative(__dirname, req.file.path),
       author:info.id,
     });
     res.json(postDoc);
   });
-
 });
 
 app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
   let newPath = null;
   if (req.file) {
-      const { originalname, path } = req.file;
-      const parts = originalname.split('.');
-      const ext = parts[parts.length - 1];
-      newPath = path + '.' + ext;
-      fs.renameSync(path, newPath);
+    newPath = path.relative(__dirname, req.file.path);
   }
 
   const { token } = req.cookies;
