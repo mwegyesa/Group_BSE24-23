@@ -74,7 +74,7 @@ jobs:
             fi
           "
           rsync -avz -e "ssh -i private_key -o StrictHostKeyChecking=no" --delete \
-            --exclude '.git' --exclude 'node_modules' \
+            --exclude '.git' --exclude 'node_modules' --exclude 'api/uploads/**' \
             ./ ${USER}@${HOST}:~/capstone/staging
           ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} "
             if [ -d ~/capstone/staging_uploads_backup ]; then
@@ -114,7 +114,7 @@ jobs:
             fi
           "
           rsync -avz -e "ssh -i private_key -o StrictHostKeyChecking=no" --delete \
-            --exclude '.git' --exclude 'node_modules' \
+            --exclude '.git' --exclude 'node_modules' --exclude 'api/uploads/**' \
             ./ ${USER}@${HOST}:~/capstone/production
           ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} "
             if [ -d ~/capstone/production_uploads_backup ]; then
