@@ -68,10 +68,19 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} "mkdir -p ~/capstone/staging"
+          ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} "
+            if [ -d ~/capstone/staging/uploads ]; then
+              mv ~/capstone/staging/uploads ~/capstone/staging_uploads_backup
+            fi
+          "
           rsync -avz -e "ssh -i private_key -o StrictHostKeyChecking=no" --delete \
-            --exclude '.git' --exclude 'node_modules' \
+            --exclude '.git' --exclude 'node_modules' --exclude 'api/uploads/**' \
             ./ ${USER}@${HOST}:~/capstone/staging
           ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} "
+            if [ -d ~/capstone/staging_uploads_backup ]; then
+              rm -rf ~/capstone/staging/uploads
+              mv ~/capstone/staging_uploads_backup ~/capstone/staging/uploads
+            fi
             cd ~/capstone/staging
             yarn install
             echo 'PORT=4000' > .env
@@ -99,10 +108,19 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} "mkdir -p ~/capstone/production"
+          ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} "
+            if [ -d ~/capstone/production/uploads ]; then
+              mv ~/capstone/production/uploads ~/capstone/production_uploads_backup
+            fi
+          "
           rsync -avz -e "ssh -i private_key -o StrictHostKeyChecking=no" --delete \
-            --exclude '.git' --exclude 'node_modules' \
+            --exclude '.git' --exclude 'node_modules' --exclude 'api/uploads/**' \
             ./ ${USER}@${HOST}:~/capstone/production
           ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} "
+            if [ -d ~/capstone/production_uploads_backup ]; then
+              rm -rf ~/capstone/production/uploads
+              mv ~/capstone/production_uploads_backup ~/capstone/production/uploads
+            fi
             cd ~/capstone/production
             yarn install
             echo 'PORT=4000' > .env
